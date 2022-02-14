@@ -13,9 +13,13 @@ data Cmd
   | MULT
   | DUP
   |IFELSE Prog Prog
+  |DEC
+  |SWAP
+  |POP Int
  deriving Show
 
 type Stack = [Either Bool Int]
+data Val = I Int | B Bool
 
 --run is is a recursive function that runs all commands in a program
 run :: Prog -> Stack -> Maybe Stack
@@ -48,6 +52,14 @@ run [IFELSE p1 p2] (Left x:s) | x  = run p1 s |otherwise = run p2 s
 run [ADD] [] = Nothing
 --If MULT is called with an emptystack we return nothing
 run [MULT] [] = Nothing
+
+run [DEC] (Right x:xs) = run[LDI (x-1)] xs
+run [SWAP] (Right x: Right y:xs) = run [LDI x, LDI y] xs
+run [SWAP] (Right x: Left y:xs) = run [LDI x, LDB y] xs
+run [SWAP] (Left x: Right y:xs) = run [LDB x, LDI y] xs
+run [SWAP] (Left x: Left y:xs) = run [LDB x, LDB y] xs
+
+run[POP k] (x:xs) | k > 1 = run[POP (k-1)] xs | otherwise = Just xs
 
 --This is the definition of the recursion for this function with base case on top
 run [] s = Just s
