@@ -24,50 +24,49 @@ data Val = I Int | B Bool
 type Rank = Int
 type CmdRank = (Int, Int)
 
---run is is a recursive function that runs all commands in a program
-run :: Prog -> Stack -> Maybe Stack
+run:: Prog -> Stack -> Maybe Stack
+run = semStatTC
+
+--run is is a recursive function that semCmds all commands in a program
+semCmd :: Prog -> Stack -> Maybe Stack
 --Adds an integer to a stack
-run [LDI n] s = Just(Right n:s)
+semCmdRank [LDI n] s = Just(Right n:s)
 --Adds a boolean to a stack
-run [LDB n] s = Just(Left n:s)
+semCmdRank [LDB n] s = Just(Left n:s)
 --If the top integer is bigger than the second top
 --we return True, otherwise return false
-run [LEQ] (x:y:s) | x <= y = run [LDB True] s
-            | otherwise = run [LDB False] s
---Adds the top 2 intergers, I couldn't get the error protection to work.
---Protects against Bools though
-run [ADD] (Right x:Right y:xs) = run [LDI (x + y)] xs
-run [ADD] (Left x: y:xs) = Nothing
-run [ADD] (x: Left y:xs) = Nothing
---multiplies the top 2 intergers, I couldn't get the error protection to work.
---Protects against Bools though
-run [MULT] (Right x:Right y:xs) = run [LDI (x * y)] xs
-run [MULT] (Left x: y:xs) = Nothing
-run [MULT] (x: Left y:xs) = Nothing
+semCmdRank [LEQ] (x:y:s) | x <= y = semCmdRank [LDB True] s
+            | otherwise = semCmdRank [LDB False] s
+semCmdRank [ADD] (Right x:Right y:xs) = semCmd [LDI (x + y)] xs
+semCmd [ADD] (Left x: y:xs) = Nothing
+semCmd [ADD] (x: Left y:xs) = Nothing
+semCmd [MULT] (Right x:Right y:xs) = semCmd [LDI (x * y)] xs
+semCmd [MULT] (Left x: y:xs) = Nothing
+semCmd [MULT] (x: Left y:xs) = Nothing
 --Duplicates the top item on the stack, works for bools and ints
-run [DUP] [] = Nothing
-run [DUP] (Right x:xs) = run [LDI x, LDI x] xs
-run [DUP] (Left x:xs) = run [LDB x, LDB x] xs
---If the top element of the stack is true, run the first program,
---else run the second program
-run [IFELSE p1 p2] (Left x:s) | x  = run p1 s |otherwise = run p2 s
+semCmd [DUP] [] = Nothing
+semCmd [DUP] (Right x:xs) = semCmd [LDI x, LDI x] xs
+semCmd [DUP] (Left x:xs) = semCmd [LDB x, LDB x] xs
+--If the top element of the stack is true, semCmd the first program,
+--else semCmd the second program
+semCmd [IFELSE p1 p2] (Left x:s) | x  = semCmd p1 s |otherwise = semCmd p2 s
 --If ADD is called with an emptystack we return nothing
-run [ADD] [] = Nothing
+semCmd [ADD] [] = Nothing
 --If MULT is called with an emptystack we return nothing
-run [MULT] [] = Nothing
+semCmd [MULT] [] = Nothing
 
-run [DEC] (Right x:xs) = run[LDI (x-1)] xs
-run [SWAP] (Right x: Right y:xs) = run [LDI x, LDI y] xs
-run [SWAP] (Right x: Left y:xs) = run [LDI x, LDB y] xs
-run [SWAP] (Left x: Right y:xs) = run [LDB x, LDI y] xs
-run [SWAP] (Left x: Left y:xs) = run [LDB x, LDB y] xs
+semCmd [DEC] (Right x:xs) = semCmd[LDI (x-1)] xs
+semCmd [SWAP] (Right x: Right y:xs) = semCmd [LDI x, LDI y] xs
+semCmd [SWAP] (Right x: Left y:xs) = semCmd [LDI x, LDB y] xs
+semCmd [SWAP] (Left x: Right y:xs) = semCmd [LDB x, LDI y] xs
+semCmd [SWAP] (Left x: Left y:xs) = semCmd [LDB x, LDB y] xs
 
-run[POP k] (x:xs) | k > 1 = run[POP (k-1)] xs | otherwise = Just xs
+semCmd[POP k] (x:xs) | k > 1 = semCmd[POP (k-1)] xs | otherwise = Just xs
 
 --This is the definition of the recursion for this function with base case on top
-run [] s = Just s
-run (x:xs) [] = run xs (maybetostack (run [x] []))
-run (x:xs) (y:ys) = run xs (maybetostack(run [x] (y:ys)))
+semCmd [] s = Just s
+semCmd (x:xs) [] = semCmd xs (maybetostack (semCmd [x] []))
+semCmd (x:xs) (y:ys) = semCmd xs (maybetostack(semCmd [x] (y:ys)))
 
 --This converts a maybe stack to stack for recursion
 maybetostack :: Maybe Stack -> Stack
@@ -101,10 +100,20 @@ rankN (n, m) = n
 rankM :: CmdRank -> Int
 rankM (n, m) = m
 
---returns rank of a program when run with stack rank r
+--returns rank of a program when semCmd with stack rank r
 rankP :: Prog -> Rank -> Maybe Rank
 rankP [] r = Just r
 rankP (p:ps) r = if (r - rankN (rankC p)) >= 0 then rankP ps (r - rankN (rankC p) + rankM (rankC p)) else Nothing
+
+
+maybetorank :: Maybe Rank -> Rank
+maybetorank Nothing = -1
+maybetorank (Just xs) = xs
+
+semStatTC :: Prog -> Stack -> Maybe Stack
+semStatTC x y | maybetorank(rankP x (length y)) >= 0 = semCmd x y
+             | otherwise     = Nothing 
+
 
 --Testing tools
 {-
