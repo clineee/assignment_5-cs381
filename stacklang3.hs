@@ -22,6 +22,8 @@ data Cmd
 data Stack = A [Val] | Int | Bool | TypeError | RankError
           deriving(Eq, Show)
 
+type Stack2 = [Val]
+
 data Val = I Int | B Bool
           deriving(Eq, Show)
 
@@ -31,8 +33,8 @@ data Val = I Int | B Bool
 type Rank = Int
 type CmdRank = (Int, Int)
 
-run:: Prog -> Stack -> Stack
-run = semStatTC
+run:: Prog -> Stack2 -> Stack
+run p s = semStatTC p (A s)
 
 --run is is a recursive function that semCmds all commands in a program
 semCmd :: Prog -> Stack -> Stack
