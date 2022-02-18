@@ -2,8 +2,6 @@
 --CS 381, 001, W2022
 --02/17/22
 
-module Stacklang2 where
-
 --Base definitions of the data we are manipulting.
 type Prog = [Cmd]
 
