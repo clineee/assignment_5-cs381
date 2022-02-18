@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 --Ethan Cline, Curtis Olels
 --CS 381, 001, W2022
 --02/17/22
@@ -125,20 +126,23 @@ sc (B x) = Bool
 tc :: Cmd -> Stack -> Stack
 tc (LDI n) _ = Int
 tc (LDB n) _ = Bool
+tc LEQ (A(x:y:xs)) | sc x == Int  && sc y == Int = Int
 tc ADD (A(x:y:xs)) | sc x == Int  && sc y == Int = Int
 tc MULT (A(x:y:xs)) | sc x == Int  && sc y == Int = Int
+tc DUP _ = Int
+tc (IFELSE _ _) (A(x:xs)) | sc x == Bool = Bool
 tc DEC (A(x:xs)) | sc x == Int = Int
-tc _ _                                       = TypeError
+tc SWAP _ = Int
+tc (POP n) _ = Int
+tc _ _  = TypeError
 
 typeCorrect :: Cmd -> Stack -> Bool
 typeCorrect e e' = tc e e'/= TypeError
 
---Testing tools
-{-
 stack1 :: Stack
-stack1 = [Right  1, Right 3, Right 5, Right 7, Right 9]
-stack2 :: Stack
-stack2 = [Left  True, Right 3]
+stack1 = A [I 1, I 3, I 5, I 7, I 9]
+--stack2 :: Stack
+--stack2 = [Left  True, Right 3]
 test1 = [LDI 3, DUP, ADD, DUP, MULT]
 test2 = [LDB True, DUP, IFELSE [LDI 1][LDI 0]]
 test3 = [LEQ]
@@ -147,4 +151,3 @@ test5 = [LEQ, IFELSE [] [], LDI 9]
 test6 = [LDI 5, LDI 2, LEQ, IFELSE [LDI 10, DUP] [], ADD]
 test7 = [LDI 5, LDI 7, LEQ, IFELSE [LDI 10, DUP] [LDI 20, DUP], ADD]
 test8 = [LDI 1, LDI 2, LDI 3, LDI 4, LDI 5, ADD, ADD, ADD, ADD]
--}
