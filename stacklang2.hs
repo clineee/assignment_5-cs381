@@ -18,8 +18,12 @@ data Cmd
   | POP Int
  deriving Show
 
-type Stack = [Either Bool Int]
+type Stack = [Val]
 data Val = I Int | B Bool
+          deriving(Eq, Show)
+
+data Type = Int | Bool | TypeError | RankError
+          deriving(Eq, Show)
 
 type Rank = Int
 type CmdRank = (Int, Int)
@@ -30,36 +34,36 @@ run = semStatTC
 --run is is a recursive function that semCmds all commands in a program
 semCmd :: Prog -> Stack -> Maybe Stack
 --Adds an integer to a stack
-semCmdRank [LDI n] s = Just(Right n:s)
+semCmd [LDI n] s = Just (I n:s)
 --Adds a boolean to a stack
-semCmdRank [LDB n] s = Just(Left n:s)
+semCmd [LDB n] s = Just (B n:s)
 --If the top integer is bigger than the second top
 --we return True, otherwise return false
-semCmdRank [LEQ] (x:y:s) | x <= y = semCmdRank [LDB True] s
-            | otherwise = semCmdRank [LDB False] s
-semCmdRank [ADD] (Right x:Right y:xs) = semCmd [LDI (x + y)] xs
-semCmd [ADD] (Left x: y:xs) = Nothing
-semCmd [ADD] (x: Left y:xs) = Nothing
-semCmd [MULT] (Right x:Right y:xs) = semCmd [LDI (x * y)] xs
-semCmd [MULT] (Left x: y:xs) = Nothing
-semCmd [MULT] (x: Left y:xs) = Nothing
+semCmd [LEQ] (x:y:s) | x <= y = semCmd [LDB True] s
+            | otherwise = semCmd [LDB False] s
+semCmd [ADD] (x:y:xs) = semCmd [LDI (x + y)] xs
+semCmd [ADD] (x:y:xs) = Nothing
+semCmd [ADD] (x:y:xs) = Nothing
+semCmd [MULT] (x:y:xs) = semCmd [LDI (x * y)] xs
+semCmd [MULT] (x:y:xs) = Nothing
+semCmd [MULT] (x:y:xs) = Nothing
 --Duplicates the top item on the stack, works for bools and ints
 semCmd [DUP] [] = Nothing
-semCmd [DUP] (Right x:xs) = semCmd [LDI x, LDI x] xs
-semCmd [DUP] (Left x:xs) = semCmd [LDB x, LDB x] xs
+semCmd [DUP] (x:xs) = semCmd [LDI x, LDI x] xs
+semCmd [DUP] (x:xs) = semCmd [LDB x, LDB x] xs
 --If the top element of the stack is true, semCmd the first program,
 --else semCmd the second program
-semCmd [IFELSE p1 p2] (Left x:s) | x  = semCmd p1 s |otherwise = semCmd p2 s
+semCmd [IFELSE p1 p2] (x:s) | x  = semCmd p1 s |otherwise = semCmd p2 s
 --If ADD is called with an emptystack we return nothing
 semCmd [ADD] [] = Nothing
 --If MULT is called with an emptystack we return nothing
 semCmd [MULT] [] = Nothing
 
-semCmd [DEC] (Right x:xs) = semCmd[LDI (x-1)] xs
-semCmd [SWAP] (Right x: Right y:xs) = semCmd [LDI x, LDI y] xs
-semCmd [SWAP] (Right x: Left y:xs) = semCmd [LDI x, LDB y] xs
-semCmd [SWAP] (Left x: Right y:xs) = semCmd [LDB x, LDI y] xs
-semCmd [SWAP] (Left x: Left y:xs) = semCmd [LDB x, LDB y] xs
+semCmd [DEC] (x:xs) = semCmd[LDI (x-1)] xs
+semCmd [SWAP] (x:y:xs) = semCmd [LDI x, LDI y] xs
+semCmd [SWAP] (x:y:xs) = semCmd [LDI x, LDB y] xs
+semCmd [SWAP] (x:y:xs) = semCmd [LDB x, LDI y] xs
+semCmd [SWAP] (x:y:xs) = semCmd [LDB x, LDB y] xs
 
 semCmd[POP k] (x:xs) | k > 1 = semCmd[POP (k-1)] xs | otherwise = Just xs
 
@@ -112,7 +116,7 @@ maybetorank (Just xs) = xs
 
 semStatTC :: Prog -> Stack -> Maybe Stack
 semStatTC x y | maybetorank(rankP x (length y)) >= 0 = semCmd x y
-             | otherwise     = Nothing 
+             | otherwise     = Nothing
 
 
 --Testing tools
