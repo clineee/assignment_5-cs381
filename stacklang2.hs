@@ -2,7 +2,9 @@
 --CS 381, 001, W2022
 --02/17/22
 
---Base definitions of the data we are manipulating.
+module Stacklang2 where
+
+--Base definitions of the data we are manipulting.
 type Prog = [Cmd]
 
 data Cmd
@@ -34,7 +36,7 @@ run = semStatTC
 --run is is a recursive function that semCmds all commands in a program
 semCmd :: Prog -> Stack -> Maybe Stack
 --Adds an integer to a stack
-semCmd [LDI n] s = Just (I n:s)
+semCmd [LDI n] s = Just(I n:s)
 --Adds a boolean to a stack
 semCmd [LDB n] s = Just (B n:s)
 --If the top integer is bigger than the second top
@@ -44,11 +46,16 @@ semCmd [LEQ] (I x:I y:s) | x <= y = semCmd [LDB True] s
 semCmd [ADD] (I x:I y:xs) = semCmd [LDI (x + y)] xs
 semCmd [MULT] (I x:I y:xs) = semCmd [LDI (x * y)] xs
 --Duplicates the top item on the stack, works for bools and ints
+semCmd [DUP] [] = Nothing
 semCmd [DUP] (I x:xs) = semCmd [LDI x, LDI x] xs
 semCmd [DUP] (B x:xs) = semCmd [LDB x, LDB x] xs
 --If the top element of the stack is true, semCmd the first program,
 --else semCmd the second program
 semCmd [IFELSE p1 p2] (B x:s) | x  = semCmd p1 s |otherwise = semCmd p2 s
+--If ADD is called with an emptystack we return nothing
+semCmd [ADD] [] = Nothing
+--If MULT is called with an emptystack we return nothing
+semCmd [MULT] [] = Nothing
 
 semCmd [DEC] (I x:xs) = semCmd[LDI (x-1)] xs
 semCmd [SWAP] (I x:I y:xs) = semCmd [LDI x, LDI y] xs
@@ -60,8 +67,10 @@ semCmd[POP k] (x:xs) | k > 1 = semCmd[POP (k-1)] xs | otherwise = Just xs
 
 --This is the definition of the recursion for this function with base case on top
 semCmd [] s = Just s
-semCmd (x:xs) [] = semCmd xs (maybetostack (semCmd [x] []))
-semCmd (x:xs) (y:ys) = semCmd xs (maybetostack(semCmd [x] (y:ys)))
+semCmd (x:xs) [] | typeCorrect x [] = semCmd xs (maybetostack (semCmd [x] []))
+                 | otherwise = Nothing
+semCmd (x:xs) (y:ys)| typeCorrect x ys = semCmd xs (maybetostack(semCmd [x] (y:ys)))
+                    | otherwise = Nothing
 
 --This converts a maybe stack to stack for recursion
 maybetostack :: Maybe Stack -> Stack
@@ -105,9 +114,26 @@ maybetorank :: Maybe Rank -> Rank
 maybetorank Nothing = -1
 maybetorank (Just xs) = xs
 
+sc :: Val -> Type
+sc (I x) = Int
+sc (B x) = Bool
+
+tc :: Cmd -> Stack -> Type
+tc (LDI n) _ = Int
+tc (LDB n) _ = Bool
+tc ADD (x:y:xs) | sc x == Int  && sc y == Int = Int
+tc MULT (x:y:xs) | sc x == Int  && sc y == Int = Int
+tc DEC (x:xs) | sc x == Int = Int
+tc _ _                                       = TypeError
+-- We can use the type checker to perform only safe evaluations
+--
+typeCorrect :: Cmd -> Stack -> Bool
+typeCorrect e e' = tc e e'/= TypeError
+
 semStatTC :: Prog -> Stack -> Maybe Stack
 semStatTC x y | maybetorank(rankP x (length y)) >= 0 = semCmd x y
-             | otherwise     = Nothing
+              | otherwise     = Nothing 
+
 
 --Testing tools
 {-
